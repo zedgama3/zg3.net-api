@@ -1,0 +1,32 @@
+# Ignore the configuration file
+config/config.json
+
+# Ignore Go build artifacts
+bin/
+pkg/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Ignore vendor directory
+vendor/
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Ignore log files and databases
+*.log
+*.sql
+*.sqlite
+
+# Ignore other system files
+.DS_Store
+Thumbs.db
+
