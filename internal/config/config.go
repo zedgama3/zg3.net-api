@@ -1,9 +1,8 @@
 // Read and supply configuration values
-package cfg
+package config
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 )
@@ -20,10 +19,8 @@ type Config struct {
 }
 
 // Read the file listed as "f" and return a config object
-func (c *Config) New(f string) (*Config, error) {
-	if c != nil {
-		return nil, errors.New("cowardly refusing to overwrite existing config")
-	}
+func New(f string) (*Config, error) {
+	var c Config
 
 	if _, err := os.Stat(f); err != nil {
 		return nil, fmt.Errorf("file does not exist: %v", f)
@@ -32,10 +29,10 @@ func (c *Config) New(f string) (*Config, error) {
 	if file, err := os.ReadFile(f); err != nil {
 		return nil, fmt.Errorf("unable to read config file: %v", err)
 	} else {
-		if err := json.Unmarshal(file, c); err != nil {
+		if err := json.Unmarshal(file, &c); err != nil {
 			return nil, fmt.Errorf("error parsing json: %v", err)
 		} else {
-			return c, nil
+			return &c, nil
 		}
 	}
 }
