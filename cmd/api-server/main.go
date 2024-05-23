@@ -1,8 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"database/sql"
 	"log"
 
 	"zg3.net-api/internal/app/auth"
@@ -10,12 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq" // PostgreSQL driver
-	database "zg3.net-api/internal/service"
+	database "zg3.net-api/internal/database"
 )
 
 type Config = config.Config
 
-// main function to load configuration and print it
 func main() {
 
 	// Load configuration from file
@@ -26,16 +24,13 @@ func main() {
 		cfg = *newCfg
 	}
 
-	jsonData, err := json.MarshalIndent(cfg, "", "    ")
-	if err != nil {
-		log.Fatal("Error formating configuration data:", err)
-	}
-	fmt.Println(string(jsonData))
-
-	db, err := database.Connect(cfg.Database)
-	if err != nil {
+	var db *sql.DB
+	if newDb, err := database.New(cfg.Database); err != nil {
 		log.Fatal("Error connecting to the database:", err)
+	} else {
+		db = newDb
 	}
+	defer db.Close()
 
 	// Setup API Routes
 	router := gin.Default()

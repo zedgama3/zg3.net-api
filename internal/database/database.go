@@ -16,7 +16,7 @@ type DatabaseConfig struct {
 }
 
 // Connects to a PostgreSQL database and returns a handle to that database.
-func Connect(cfg DatabaseConfig) (*sql.DB, error) {
+func New(cfg DatabaseConfig) (*sql.DB, error) {
 	fmt.Println(cfg)
 
 	// Connect to database
