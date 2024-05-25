@@ -74,18 +74,12 @@ func Login(c *gin.Context) {
 
 // Authenticate a user based on their username and password and return a User
 func PasswordLogin(db *sql.DB, username string, password string) (*User, *HttpError) {
-	/*
-		TODO:
-		- Validate password
-		- Populate User struct
-	*/
 	u := User{
 		Username: username,
 	}
 
 	if err := dbGetUser(db, &u); err != nil {
 		return nil, err
-		//TODO: Process error
 	}
 
 	if isMatch, err := verifyPassword(password, u.passwordHash); err != nil {

@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 )
 
 type DatabaseConfig struct {
@@ -17,26 +16,25 @@ type DatabaseConfig struct {
 
 // Connects to a PostgreSQL database and returns a handle to that database.
 func New(cfg DatabaseConfig) (*sql.DB, error) {
-	fmt.Println(cfg)
 
 	// Connect to database
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.Database)
 
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatalf("Error opening database: %s", err)
+	var db *sql.DB
+	if newDb, err := sql.Open("postgres", connStr); err != nil {
+		return nil, fmt.Errorf("error opening database: %v", err)
+	} else {
+		db = newDb
 	}
 	//defer db.Close()
 
 	// Check the database connection
-	err = db.Ping()
-	if err != nil {
-		log.Fatalf("Error connecting to the database: %s", err)
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("error connecting to the database: %v", err)
 	}
 
 	fmt.Println("Successfully connected to the database!")
 
-	//TODO: Error handling.  Pass error details to calling function.
 	return db, nil
 }
