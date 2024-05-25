@@ -9,10 +9,11 @@ import (
 type Token string
 
 type User struct {
-	UserId      string `json:"user_id"`
-	Username    string `json:"username"`
-	Status      string `json:"status"`
-	Permissions []byte `json:"permissions"`
+	UserId       string `json:"user_id"`
+	Username     string `json:"username"`
+	Status       string `json:"status"`
+	Permissions  []byte `json:"permissions"`
+	passwordHash string
 }
 
 // This should be moved to a common package.

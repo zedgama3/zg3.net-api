@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"log"
 
-	"zg3.net-api/internal/app/auth"
 	"zg3.net-api/internal/config"
+	"zg3.net-api/internal/user"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq" // PostgreSQL driver
@@ -24,6 +24,7 @@ func main() {
 		cfg = *newCfg
 	}
 
+	// Setup database connection
 	var db *sql.DB
 	if newDb, err := database.New(cfg.Database); err != nil {
 		log.Fatal("Error connecting to the database:", err)
@@ -42,8 +43,9 @@ func main() {
 		c.Next()
 	})
 
-	router.POST("/login", auth.Login)
-	//router.GET("/files", handler.AuthenticateUser)
+	// User endpoints
+	user.SetSecret(cfg.Login.JwtSecret)
+	router.POST("/login", user.Login)
 
 	router.Run(":8080")
 
