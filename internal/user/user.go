@@ -38,9 +38,11 @@ func SetConfig(newConfig Config) {
 func Login(c *gin.Context) {
 
 	// Check that needed components are present
-	db, exists := c.MustGet("db").(*sql.DB)
-	if !exists {
+	var db *sql.DB
+	if newDb, exists := c.MustGet("db").(*sql.DB); !exists {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Handle not found"})
+	} else {
+		db = newDb
 	}
 	if len(config.Secret) < 32 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Missing secret"})
@@ -89,7 +91,7 @@ func PasswordLogin(db *sql.DB, username string, password string) (*User, *HttpEr
 	if isMatch, err := verifyPassword(password, u.passwordHash); err != nil {
 		return nil, err
 	} else if !isMatch {
-		return nil, &HttpError{http.StatusUnauthorized, gin.H{"error": "User is not authorized"}, errors.New("Password verification failed.")}
+		return nil, &HttpError{http.StatusUnauthorized, gin.H{"error": "User is not authorized"}, errors.New("password verification failed")}
 	}
 
 	return &u, nil
