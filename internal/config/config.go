@@ -16,9 +16,11 @@ type Config struct {
 		Schema   string `json:"schema"`
 		Database string `json:"database"`
 	} `json:"database"`
-	Login struct {
-		JwtSecret string `json:"jwt_secret"`
-	} `json:"login"`
+	User struct {
+		Secret     string `json:"secret"`
+		PrivateKey string `json:"private_key"`
+		PublicKey  string `json:"public_key"`
+	} `json:"user"`
 }
 
 // Read the file listed as "f" and return a config object

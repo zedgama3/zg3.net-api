@@ -44,7 +44,8 @@ func main() {
 	})
 
 	// User endpoints
-	user.SetSecret(cfg.Login.JwtSecret)
+
+	user.SetConfig(cfg.User)
 	router.POST("/login", user.Login)
 
 	router.Run(":8080")

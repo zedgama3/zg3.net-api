@@ -8,6 +8,12 @@ import (
 
 type Token string
 
+type Config struct {
+	Secret     string `json:"secret"`
+	PrivateKey string `json:"private_key"`
+	PublicKey  string `json:"public_key"`
+}
+
 type User struct {
 	UserId       string `json:"user_id"`
 	Username     string `json:"username"`

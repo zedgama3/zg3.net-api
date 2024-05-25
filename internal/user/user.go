@@ -10,8 +10,10 @@ package user
 
 import (
 	"crypto/subtle"
+	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,11 +26,12 @@ import (
 )
 
 // Package level unexported JWT secret.
-var secretKey string
+
+var config Config
 
 // Exported function to allow setting the JWT secret.  This must be at least 32 characters.
-func SetSecret(secret string) {
-	secretKey = secret
+func SetConfig(newConfig Config) {
+	config = newConfig
 }
 
 // HTTP endpoint handler
@@ -39,7 +42,7 @@ func Login(c *gin.Context) {
 	if !exists {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Handle not found"})
 	}
-	if len(secretKey) < 32 {
+	if len(config.Secret) < 32 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Missing secret"})
 	}
 
@@ -57,6 +60,7 @@ func Login(c *gin.Context) {
 
 		// Create and return token
 		if token, err := user.NewToken(); err != nil {
+			fmt.Printf("Error creating token: %v\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to create token"})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"token": token})
@@ -95,18 +99,17 @@ func PasswordLogin(db *sql.DB, username string, password string) (*User, *HttpEr
 func (u *User) NewToken() (*Token, error) {
 
 	// Create the token
-	token := jwt.New(jwt.SigningMethodHS256)
+	token := jwt.New(jwt.SigningMethodES256)
 
 	// Set claims - Notes starting with * are required.
 	claims := token.Claims.(jwt.MapClaims)
-	claims["iss"] = "https://zg3.net"                    // *Issuer:              Identifier for the issuer of the token. This should be a URL.
-	claims["sub"] = "home-1"                             // *Subject:             Identifier for the end-user. It must be unique within the issuer's domain.
-	claims["aud"] = ""                                   // *Audience:            Identifies the recipients that the token is intended for. It must contain the client ID of the relying party.
-	claims["exp"] = time.Now().Add(time.Hour * 1).Unix() // *Expiration Time:     The expiration time on or after which the token must not be accepted for processing. It is represented in Unix time (seconds since the epoch).
-	claims["iat"] = time.Now().Unix()                    // *Issued At:           The time at which the token was issued. It is also represented in Unix time.
-	claims["auth_time"] = time.Now().Unix()              // *Authentication Time: Time when the end-user authentication occurred. This is required if the max_age parameter was used during the authentication request.
-	//claims["nonce"] = ""                                 // Unguessable, case-sensitive string value passed in authentication request from the relaying party
-	claims["amr"] = []string{"pwd"} // Authentication methods reference. e.g., pwd: password, mfa, otp, sms, etc...
+	claims["iss"] = "https://zg3.net"                    // *Issuer
+	claims["sub"] = "home-1"                             // *Subject
+	claims["aud"] = ""                                   // *Audience
+	claims["exp"] = time.Now().Add(time.Hour * 1).Unix() // *Expiration Time
+	claims["iat"] = time.Now().Unix()                    // *Issued At
+	claims["auth_time"] = time.Now().Unix()              // *Authentication Time
+	claims["amr"] = []string{"pwd"}                      // Authentication methods reference
 	claims["name"] = ""
 	claims["admin"] = u.Username == "zedgama3"
 	claims["authorized"] = true
@@ -114,12 +117,26 @@ func (u *User) NewToken() (*Token, error) {
 	claims["permissions"] = u.Permissions
 	claims["user_id"] = u.UserId
 
-	key, _ := base64.StdEncoding.DecodeString(secretKey)
+	// Decode the base64 encoded private key
+	keyData, err := base64.StdEncoding.DecodeString(config.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode private key: %v", err)
+	}
 
-	// Sign the token with the secret key
+	block, _ := pem.Decode(keyData)
+	if block == nil || block.Type != "EC PRIVATE KEY" {
+		return nil, fmt.Errorf("failed to decode PEM block containing the private key")
+	}
+
+	privateKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse EC private key: %v", err)
+	}
+
+	// Sign the token with the ECDSA private key
 	var myToken Token
-	if tokenString, err := token.SignedString(key); err != nil {
-		return nil, &HttpError{http.StatusInternalServerError, gin.H{"error": "Unable to sign JWT."}, err}
+	if tokenString, err := token.SignedString(privateKey); err != nil {
+		return nil, fmt.Errorf("unable to sign JWT: %v", err)
 	} else {
 		myToken = Token(tokenString)
 	}
