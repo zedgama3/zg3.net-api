@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"zg3.net-api/internal/user"
 
@@ -40,6 +42,8 @@ func main() {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
+
+	router.Use(LoggingMiddleware)
 
 	// User endpoints
 
@@ -95,4 +99,57 @@ func newConfig(f string) (*Config, error) {
 			return &c, nil
 		}
 	}
+}
+
+// LoggingMiddleware logs the details of each request
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Capture the response writer to get the status code
+		rw := &responseWriter{w, http.StatusOK}
+
+		// Call the next handler
+		next.ServeHTTP(rw, r)
+
+		// Log the details
+		log.Printf(
+			"%-7s %-30s %-10s %-15s \033[48;5;%dm%-3d\033[0m %-10s",
+			r.Method,
+			r.RequestURI,
+			r.Proto,
+			r.RemoteAddr[:strings.IndexByte(r.RemoteAddr, ':')],
+			getStatusCodeColor(rw.statusCode),
+			rw.statusCode,
+			time.Since(start),
+		)
+	})
+}
+
+// Function to get the color code based on the status code
+func getStatusCodeColor(statusCode int) int {
+	if statusCode >= 200 && statusCode < 300 {
+		// Green background for 2xx responses
+		return 42
+	} else if statusCode >= 400 && statusCode < 500 {
+		// Yellow background for 4xx responses
+		return 43
+	} else if statusCode >= 500 && statusCode < 600 {
+		// Red background for 5xx responses
+		return 41
+	} else {
+		// Default color
+		return 0
+	}
+}
+
+// responseWriter is a custom response writer to capture the status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.statusCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
 }
