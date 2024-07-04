@@ -10,6 +10,11 @@ require (
 )
 
 require (
+	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/gorilla/handlers v1.5.2 // indirect
+)
+
+require (
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect

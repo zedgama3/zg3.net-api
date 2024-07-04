@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"zg3.net-api/internal/restaurants"
 	"zg3.net-api/internal/user"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
@@ -49,8 +51,16 @@ func main() {
 
 	user.SetConfig(cfg.User)
 	router.HandleFunc("/login", user.Login).Methods("POST")
+	router.HandleFunc("/restaurants/autocomplete/{name}", restaurants.AutoComplete).Methods("GET")
 
-	err = http.ListenAndServe(":8012", router)
+	// Enable CORS for all origins
+	corsHandler := handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+	)(router)
+
+	err = http.ListenAndServe(":8012", corsHandler)
 	if err != nil {
 		log.Fatal("Error starting the server:", err)
 	}

@@ -30,3 +30,7 @@ vendor/
 .DS_Store
 Thumbs.db
 
+
+# Ignore node and npm
+node_modules/
+package-lock.json

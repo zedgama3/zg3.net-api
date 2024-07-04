@@ -225,6 +225,8 @@ func verifyPassword(password, encodedHash string) (isMatch bool, err *HttpError)
 	return false, nil
 }
 
+/************************************************************/
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
