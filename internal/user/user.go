@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -35,40 +36,54 @@ func SetConfig(newConfig Config) {
 }
 
 // HTTP endpoint handler
-func Login(c *gin.Context) {
+func Login(w http.ResponseWriter, r *http.Request) {
 
 	// Check that needed components are present
 	var db *sql.DB
-	if newDb, exists := c.MustGet("db").(*sql.DB); !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Handle not found"})
+	if newDb, exists := r.Context().Value("db").(*sql.DB); !exists {
+		http.Error(w, "DB Handle not found", http.StatusInternalServerError)
+		return
 	} else {
 		db = newDb
 	}
 	if len(config.Secret) < 32 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Missing secret"})
+		http.Error(w, "Missing secret", http.StatusInternalServerError)
+		return
+	}
+
+	// Decode JSON request
+	var form struct {
+		GrantType string `json:"grant_type"`
+		Username  string `json:"username"`
+		Password  string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+		jsonError(w, "invalid_request", http.StatusBadRequest)
+		return
 	}
 
 	// Handle request based on requested grant type
-	switch c.PostForm("grant_type") {
+	switch form.GrantType {
 	case "password":
 
 		// Get user data and confirm password
-		var user User
-		if newUser, err := PasswordLogin(db, c.PostForm("username"), c.PostForm("password")); err != nil {
-			c.JSON(err.Code, gin.H{"error": err.Message})
-		} else {
-			user = *newUser
+		user, err := PasswordLogin(db, form.Username, form.Password)
+		if err != nil {
+			jsonError(w, err.Error(), err.Code)
+			return
 		}
 
 		// Create and return token
+		// TODO: Change error type returned by NewToken to HttpError and change if format.
 		if token, err := user.NewToken(); err != nil {
 			fmt.Printf("Error creating token: %v\n", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to create token"})
+			jsonError(w, "unable to create token", http.StatusInternalServerError)
 		} else {
-			c.JSON(http.StatusOK, gin.H{"token": token})
+			jsonOutput(w, map[string]Token{"token": *token}, http.StatusOK)
 		}
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported_grant_type"})
+		jsonError(w, "unsupported_grant_type", http.StatusBadRequest)
 	}
 }
 
@@ -78,10 +93,12 @@ func PasswordLogin(db *sql.DB, username string, password string) (*User, *HttpEr
 		Username: username,
 	}
 
+	// Get user information from database
 	if err := dbGetUser(db, &u); err != nil {
 		return nil, err
 	}
 
+	// Check password
 	if isMatch, err := verifyPassword(password, u.passwordHash); err != nil {
 		return nil, err
 	} else if !isMatch {
@@ -206,4 +223,20 @@ func verifyPassword(password, encodedHash string) (isMatch bool, err *HttpError)
 		return true, nil
 	}
 	return false, nil
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func jsonError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(ErrorResponse{Error: message})
+}
+
+func jsonOutput(w http.ResponseWriter, data interface{}, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(data)
 }
